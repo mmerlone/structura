@@ -1,0 +1,24 @@
+import { Typography } from '@mui/material'
+
+import { uiText } from './config/uiText'
+
+import { AuthOperationsEnum } from '@/types/enums'
+
+/**
+ * Dynamic header component that displays appropriate title and description
+ * based on the current authentication operation
+ */
+
+interface AuthFormHeaderProps {
+  operation: AuthOperationsEnum
+}
+
+export function AuthFormHeader({ operation }: AuthFormHeaderProps): JSX.Element {
+  const title = uiText.titles[operation]
+
+  return (
+    <Typography variant="h5" component="h1" align="center" gutterBottom sx={{ mb: 3 }}>
+      {title}
+    </Typography>
+  )
+}

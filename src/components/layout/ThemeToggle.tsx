@@ -1,0 +1,61 @@
+'use client'
+
+import { DarkMode, LightMode, SettingsBrightness } from '@mui/icons-material'
+import { Skeleton, ToggleButton, ToggleButtonGroup } from '@mui/material'
+import { useColorScheme } from '@mui/material/styles'
+
+import { ThemePreference, ThemePreferenceEnum } from '../../types'
+
+export function ThemeToggle(): JSX.Element {
+  const { mode, setMode } = useColorScheme()
+
+  // const theme = useTheme()
+  // console.log({ theme })
+
+  const handleThemeChange = (_event: React.MouseEvent<HTMLElement>, newTheme: string | null): void => {
+    if (newTheme !== null) {
+      setMode(newTheme as ThemePreference)
+    }
+  }
+
+  const themeOptions = [
+    {
+      value: ThemePreferenceEnum.LIGHT,
+      label: 'Light',
+      icon: <LightMode fontSize="small" />,
+      ariaLabel: 'Switch to light theme',
+    },
+    {
+      value: ThemePreferenceEnum.SYSTEM,
+      label: 'System',
+      icon: <SettingsBrightness fontSize="small" />,
+      ariaLabel: 'Use system theme',
+    },
+    {
+      value: ThemePreferenceEnum.DARK,
+      label: 'Dark',
+      icon: <DarkMode fontSize="small" />,
+      ariaLabel: 'Switch to dark theme',
+    },
+  ]
+
+  // Show skeleton while theme mode is loading
+  if (!mode) {
+    return <Skeleton variant="rectangular" width={106} height={36} sx={{ borderRadius: 1 }} />
+  }
+
+  return (
+    <ToggleButtonGroup
+      value={mode ?? ThemePreferenceEnum.SYSTEM}
+      exclusive
+      onChange={handleThemeChange}
+      aria-label="theme selection"
+      size="small">
+      {themeOptions.map((option) => (
+        <ToggleButton key={option.value} value={option.value} aria-label={option.ariaLabel}>
+          {option.icon}
+        </ToggleButton>
+      ))}
+    </ToggleButtonGroup>
+  )
+}
