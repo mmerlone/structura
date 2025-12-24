@@ -38,7 +38,8 @@ const PROFILE_BUCKET = 'avatars'
  * ```
  */
 export function useOptimizedAvatar(avatarUrl: string | null) {
-  const client = createClient()
+  // Memoize the client to prevent recreation on every render
+  const client = useMemo(() => createClient(), [])
 
   return useMemo(() => {
     const pathInfo = parseSupabaseStorageUrl(avatarUrl)
@@ -63,8 +64,7 @@ export function useOptimizedAvatar(avatarUrl: string | null) {
       large: getOptimizedImageUrl(client, bucket, filePath, AVATAR_SIZES.large),
       original: avatarUrl || '',
     }
-    // Note: client is intentionally excluded from deps as it's a stable instance
-  }, [avatarUrl])
+  }, [avatarUrl, client])
 }
 
 /**
@@ -91,7 +91,8 @@ export function useOptimizedAvatarUrl(
   avatarUrl: string | null,
   options: ImageTransformOptions = AVATAR_SIZES.medium
 ) {
-  const client = createClient()
+  // Memoize the client to prevent recreation on every render
+  const client = useMemo(() => createClient(), [])
 
   return useMemo(() => {
     const pathInfo = parseSupabaseStorageUrl(avatarUrl)
@@ -102,6 +103,5 @@ export function useOptimizedAvatarUrl(
 
     const { bucket, filePath } = pathInfo
     return getOptimizedImageUrl(client, bucket, filePath, options)
-    // Note: client is intentionally excluded from deps as it's a stable instance
-  }, [avatarUrl, options])
+  }, [avatarUrl, options, client])
 }

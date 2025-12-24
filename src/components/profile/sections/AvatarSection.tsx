@@ -40,9 +40,9 @@ export function AvatarSection(): JSX.Element {
         setIsUploading(true)
         logger.info({ fileName: file.name, fileSize: file.size }, 'Starting avatar upload')
 
+        // uploadAvatar already updates the profile with the optimized URL
         const uploadedUrl = await uploadAvatar(file)
         if (uploadedUrl) {
-          await updateProfile({ avatar_url: uploadedUrl })
           logger.info({ uploadedUrl }, 'Avatar upload completed successfully')
         }
       } catch (error) {
@@ -55,7 +55,7 @@ export function AvatarSection(): JSX.Element {
         }
       }
     },
-    [uploadAvatar, updateProfile]
+    [uploadAvatar]
   )
 
   const handleRemoveAvatar = useCallback(
