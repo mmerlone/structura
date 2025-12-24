@@ -14,6 +14,7 @@ const logger = buildLogger('location-actions')
 const geoLocationCache = new Map<string, { country: string; timestamp: number }>()
 const CACHE_TTL = 24 * 60 * 60 * 1000 // 24 hours
 const MAX_CACHE_SIZE = 1000 // Prevent unbounded memory growth
+const CACHE_EVICTION_RATIO = 0.1 // Remove 10% of oldest entries when cache is full
 
 /**
  * Get country from cache if available and not expired
@@ -36,9 +37,9 @@ function getCachedCountry(cacheKey: string): string | null {
  * Store country in cache with LRU eviction
  */
 function cacheCountry(cacheKey: string, country: string): void {
-  // Improved LRU: if cache is full, remove oldest 10% of entries
+  // Improved LRU: if cache is full, remove oldest entries based on CACHE_EVICTION_RATIO
   if (geoLocationCache.size >= MAX_CACHE_SIZE) {
-    const entriesToRemove = Math.max(1, Math.floor(MAX_CACHE_SIZE * 0.1))
+    const entriesToRemove = Math.max(1, Math.floor(MAX_CACHE_SIZE * CACHE_EVICTION_RATIO))
     const sortedEntries = Array.from(geoLocationCache.entries()).sort(
       ([, a], [, b]) => a.timestamp - b.timestamp
     )

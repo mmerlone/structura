@@ -1,7 +1,6 @@
 import { BaseService } from '../../base.service'
 import { convertAppProfileForInsert, convertAppProfileForUpdate, convertDbProfile } from '@/lib/utils/profile-utils'
 import { validateAndSanitizeFile } from '@/lib/security/sanitize'
-import { SECURITY_CONFIG } from '@/config/security'
 import type { Profile, ProfileUpdate } from '@/types/profile.types'
 
 const PROFILE_BUCKET = 'avatars'
