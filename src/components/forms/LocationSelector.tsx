@@ -5,6 +5,7 @@ import { ICity, ICountry, IState } from 'country-state-city'
 import { useEffect, useMemo, useState } from 'react'
 import { useFormContext } from 'react-hook-form'
 
+import { logger } from '@/lib/logger/client'
 import {
   getCities,
   getCountries,
@@ -94,7 +95,7 @@ export function LocationSelector({
         }
       } catch (error) {
         if (isMounted) {
-          console.warn('Failed to detect user country in LocationSelector:', error)
+          logger.warn({ error }, 'Failed to detect user country in LocationSelector')
         }
       }
     }

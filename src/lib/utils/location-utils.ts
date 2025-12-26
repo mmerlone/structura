@@ -4,7 +4,8 @@ import { detectCountry } from '@/lib/actions/location'
 import { getCurrentTimezone } from '@/lib/utils/timezone'
 
 // Note: This utility can be used in both client and server environments
-// Logging is handled by the caller if needed
+// Since this is a shared utility, we use console.warn for non-critical warnings
+// as logger would introduce client/server bundling issues
 
 // Cache for detected country to avoid multiple API calls
 let cachedCountry: ICountry | null = null

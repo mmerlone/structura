@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 
+import { logger } from '@/lib/logger/client'
 import { ensureCookiePreferences } from '@/lib/utils/cookie-utils'
 import type { CookiePreferences } from '@/types/cookie.types'
 
@@ -147,7 +148,7 @@ export function useCookieConsent(): UseCookieConsentReturn {
           const raw = JSON.parse(savedPrefs) as CookiePreferences
           return ensureCookiePreferences(raw)
         } catch (err) {
-          console.error('Failed to parse saved cookie preferences:', err)
+          logger.error({ err }, 'Failed to parse saved cookie preferences')
           return { ...defaultPreferences }
         }
       })()
@@ -157,7 +158,7 @@ export function useCookieConsent(): UseCookieConsentReturn {
         preferences: parsedPrefs,
       }
     } catch (error) {
-      console.error('Error loading cookie preferences from localStorage:', error)
+      logger.error({ error }, 'Error loading cookie preferences from localStorage')
       return {
         preferences: { ...defaultPreferences },
         hasConsent: null,
@@ -192,9 +193,9 @@ export function useCookieConsent(): UseCookieConsentReturn {
       }))
       setIsBannerOpen(false)
 
-      console.debug('Cookie preferences saved:', { preferences: validPrefs, consent })
+      logger.debug({ preferences: validPrefs, consent }, 'Cookie preferences saved')
     } catch (error) {
-      console.error('Failed to save cookie preferences:', error)
+      logger.error({ error }, 'Failed to save cookie preferences')
       throw error
     }
   }, [])

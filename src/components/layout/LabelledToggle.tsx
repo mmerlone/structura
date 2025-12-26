@@ -4,6 +4,7 @@ import { Box, FormControl, FormHelperText, FormLabel, Radio, RadioGroup, FormCon
 import * as React from 'react'
 import { forwardRef, useId, useMemo, useState } from 'react'
 
+import { logger } from '@/lib/logger/client'
 import { cn } from '@/lib/utils'
 import type { LabelledToggleOption } from '@/types'
 
@@ -73,11 +74,14 @@ function LabelledToggleInner<T extends string | number>(
     const isValidOption = options.some((opt) => opt.value === rawValue)
 
     if (!isValidOption) {
-      console.error(`Invalid value "${rawValue}" not found in options:`, {
-        rawValue,
-        validOptions: options.map((opt) => opt.value),
-        component: 'LabelledToggle',
-      })
+      logger.error(
+        {
+          rawValue,
+          validOptions: options.map((opt) => opt.value),
+          component: 'LabelledToggle',
+        },
+        `Invalid value "${rawValue}" not found in options`
+      )
       return
     }
 

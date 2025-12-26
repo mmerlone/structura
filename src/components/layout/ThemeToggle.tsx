@@ -9,9 +9,6 @@ import { ThemePreference, ThemePreferenceEnum } from '../../types'
 export function ThemeToggle(): JSX.Element {
   const { mode, setMode } = useColorScheme()
 
-  // const theme = useTheme()
-  // console.log({ theme })
-
   const handleThemeChange = (_event: React.MouseEvent<HTMLElement>, newTheme: string | null): void => {
     if (newTheme !== null) {
       setMode(newTheme as ThemePreference)

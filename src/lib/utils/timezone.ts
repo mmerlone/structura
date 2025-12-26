@@ -3,7 +3,8 @@ import moment from 'moment-timezone'
 import { Timezone } from '@/types/timezone.types'
 
 // Note: This utility can be used in both client and server environments
-// Logging is handled by the caller if needed
+// Since this is a shared utility, we don't import logger here to avoid client/server issues
+// Callers should handle logging if needed
 
 /**
  * Gets all available IANA timezones with their current offsets using moment-timezone
@@ -48,6 +49,9 @@ export function getCurrentTimezone(): string {
 
     return guessedTz
   } catch (e) {
+    // Note: We use console.warn here because this is a shared utility
+    // that can be called from both client and server, and we don't want
+    // to introduce logger dependencies that could cause bundling issues
     console.warn('Could not determine timezone, using UTC as fallback:', e)
     return 'UTC'
   }

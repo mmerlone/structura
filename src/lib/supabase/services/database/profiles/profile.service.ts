@@ -1,8 +1,17 @@
 import { BaseService } from '../../base.service'
 import { convertAppProfileForInsert, convertAppProfileForUpdate, convertDbProfile } from '@/lib/utils/profile-utils'
+import { validateAndSanitizeFile } from '@/lib/security/sanitize'
+import { getOptimizedImageUrl, parseSupabaseStorageUrl, AVATAR_SIZES } from '@/lib/utils/image-utils'
 import type { Profile, ProfileUpdate } from '@/types/profile.types'
 
 const PROFILE_BUCKET = 'avatars'
+
+// Avatar validation constraints
+const AVATAR_VALIDATION = {
+  maxSize: 5 * 1024 * 1024, // 5MB
+  allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'],
+  allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp', '.gif'],
+} as const
 
 /**
  * Abstract base profile service with shared business logic
@@ -86,25 +95,98 @@ export abstract class ProfileService extends BaseService {
   async uploadAvatar(userId: string, file: File): Promise<string> {
     try {
       this.logger.debug({ userId, fileName: file.name }, 'Uploading avatar')
+
+      // Server-side validation
+      const validation = validateAndSanitizeFile(file, AVATAR_VALIDATION)
+      
+      if (!validation.isValid) {
+        this.logger.warn(
+          { userId, fileName: file.name, error: validation.error },
+          'Avatar validation failed'
+        )
+        throw new Error(validation.error || 'Invalid file')
+      }
+
       const fileExt = file.name.split('.').pop()
-      const fileName = `${userId}-${Date.now()}.${fileExt}`
+      // Use crypto.randomUUID() to prevent filename collisions
+      const uniqueId = typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID() 
+        : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+      const fileName = validation.sanitizedName || `${userId}-${uniqueId}.${fileExt}`
       const filePath = `${userId}/${fileName}`
 
-      const { error: uploadError } = await this.client.storage.from(PROFILE_BUCKET).upload(filePath, file)
+      // Upload file to storage
+      const { error: uploadError } = await this.client.storage.from(PROFILE_BUCKET).upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false, // Don't overwrite existing files
+      })
 
       if (uploadError) throw uploadError
 
-      const {
-        data: { publicUrl },
-      } = this.client.storage.from(PROFILE_BUCKET).getPublicUrl(filePath)
+      // Generate optimized image URL using Supabase Transform
+      // This uses the medium size (200x200) as the primary avatar URL
+      const optimizedUrl = getOptimizedImageUrl(this.client, PROFILE_BUCKET, filePath, AVATAR_SIZES.medium)
 
-      // Update profile with new avatar URL
-      await this.updateProfile(userId, { avatar_url: publicUrl })
+      // Transaction-like behavior: Update profile with optimized avatar URL
+      // If this fails, the uploaded file remains in storage (orphaned)
+      // Consider implementing cleanup job for orphaned files
+      try {
+        await this.updateProfile(userId, { avatar_url: optimizedUrl })
+      } catch (updateError) {
+        // Attempt to clean up uploaded file on profile update failure
+        await this.client.storage.from(PROFILE_BUCKET).remove([filePath])
+        throw updateError
+      }
 
-      this.logger.info({ userId, publicUrl }, 'Avatar uploaded successfully')
-      return publicUrl
+      this.logger.info({ userId, optimizedUrl, filePath }, 'Avatar uploaded successfully with optimization')
+      return optimizedUrl
     } catch (error) {
       return this.handleError(error, 'upload avatar', { userId })
+    }
+  }
+
+  /**
+   * Get optimized avatar URLs for different sizes
+   * Useful for responsive images or different UI contexts
+   * 
+   * @param avatarUrl - The stored avatar URL (can be optimized or base URL)
+   * @returns Object with URLs for different sizes, or null if no avatar
+   * 
+   * @example
+   * ```typescript
+   * const urls = await service.getOptimizedAvatarUrls(profile.avatar_url)
+   * if (urls) {
+   *   console.log(urls.thumbnail) // 50x50
+   *   console.log(urls.medium)    // 200x200
+   *   console.log(urls.large)     // 400x400
+   * }
+   * ```
+   */
+  getOptimizedAvatarUrls(
+    avatarUrl: string | null
+  ): { thumbnail: string; small: string; medium: string; large: string } | null {
+    if (!avatarUrl) return null
+
+    // Use shared utility to parse the URL
+    const pathInfo = parseSupabaseStorageUrl(avatarUrl)
+    
+    if (!pathInfo) {
+      // URL doesn't match expected pattern, return as-is for all sizes
+      return {
+        thumbnail: avatarUrl,
+        small: avatarUrl,
+        medium: avatarUrl,
+        large: avatarUrl,
+      }
+    }
+
+    const { bucket, filePath } = pathInfo
+
+    return {
+      thumbnail: getOptimizedImageUrl(this.client, bucket, filePath, AVATAR_SIZES.thumbnail),
+      small: getOptimizedImageUrl(this.client, bucket, filePath, AVATAR_SIZES.small),
+      medium: getOptimizedImageUrl(this.client, bucket, filePath, AVATAR_SIZES.medium),
+      large: getOptimizedImageUrl(this.client, bucket, filePath, AVATAR_SIZES.large),
     }
   }
 }

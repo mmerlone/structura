@@ -4,9 +4,10 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { handleApiError, withApiErrorHandler } from '@/lib/error/server'
 import { applySecurityHeaders } from '@/lib/security/headers'
 import { logSecurityEvent, extractSecurityContext } from '@/lib/security/audit'
+import { withRateLimit } from '@/lib/security/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
-export const GET = withApiErrorHandler(async (request: NextRequest): Promise<NextResponse> => {
+export const GET = withRateLimit('emailVerification', withApiErrorHandler(async (request: NextRequest): Promise<NextResponse> => {
   const { searchParams, origin } = new URL(request.url)
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') as EmailOtpType | null
@@ -101,4 +102,4 @@ export const GET = withApiErrorHandler(async (request: NextRequest): Promise<Nex
   const errorUrl = new URL('/auth/auth-code-error', origin)
   errorUrl.searchParams.set('code', 'invalid_verification_link')
   return applySecurityHeaders(NextResponse.redirect(errorUrl))
-})
+}))

@@ -16,6 +16,7 @@ import { ProfessionalInfo } from './sections/ProfessionalInfo'
 import { SITE_CONFIG } from '@/config/site'
 import { useSnackbar } from '@/contexts/SnackbarContext'
 import { useProfile } from '@/hooks/useProfile'
+import { logger } from '@/lib/logger/client'
 import { ProfileFormValues, profileFormSchema } from '@/lib/validators'
 import { GenderPreference } from '@/types'
 import { Profile, ProfileUpdate } from '@/types/database'
@@ -129,12 +130,15 @@ export function ProfileForm({ user, profile: initialProfile }: ProfileFormProps)
         reset(data, { keepDirty: false, keepErrors: false })
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to update profile'
-        console.error('Profile update error:', {
-          error: errorMessage,
-          component: 'ProfileForm',
-          action: 'updateProfile',
-          stack: error instanceof Error ? error.stack : undefined,
-        })
+        logger.error(
+          {
+            error: errorMessage,
+            component: 'ProfileForm',
+            action: 'updateProfile',
+            stack: error instanceof Error ? error.stack : undefined,
+          },
+          'Profile update error'
+        )
         showError('Failed to update profile. Please try again.')
       }
     },

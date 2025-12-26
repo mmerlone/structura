@@ -8,6 +8,7 @@ import { AuthContextType } from '../types'
 
 import { authService } from '@/lib/auth/actions/client'
 import { handleClientError as handleError, AuthErrorTypeEnum, isAppError } from '@/lib/error'
+import { logger } from '@/lib/logger/client'
 import type { AppError } from '@/types/error.types'
 import { AuthProvidersEnum, SignOutReasonEnum } from '@/types/enums'
 import type { SignOutReason } from '@/types/auth.types'
@@ -100,7 +101,7 @@ export const useAuth = (): AuthContextType => {
           const authUser = await authService.getUser()
 
           if (!authUser) {
-            console.warn('User not found in database, signing out:', { userId: session.user?.id })
+            logger.warn({ userId: session.user?.id }, 'User not found in database, signing out')
             await authService.signOut(SignOutReasonEnum.USER_NOT_FOUND)
             if (isMounted) {
               setSession(null)
@@ -120,8 +121,7 @@ export const useAuth = (): AuthContextType => {
           setAuthUser(session?.user ?? null)
 
           const user = session?.user
-          console.log(
-            'Session check:',
+          logger.info(
             {
               hasSession: true,
               hasUser: user !== null && user !== undefined,
@@ -139,8 +139,7 @@ export const useAuth = (): AuthContextType => {
             error.message.includes('Invalid Refresh Token'))
 
         if (isRefreshTokenError) {
-          console.warn(
-            'Refresh token error:',
+          logger.warn(
             {
               error: error instanceof Error ? error.stack : error,
               authErrorType: AuthErrorTypeEnum.REFRESH_TOKEN,
@@ -173,7 +172,7 @@ export const useAuth = (): AuthContextType => {
     }
 
     const unsubscribe = authService.onAuthStateChange((event: string, session: Session | null): void => {
-      console.debug('Auth state changed:', { event })
+      logger.debug({ event }, 'Auth state changed')
       if (isMounted) {
         setSession(session)
         setAuthUser(session?.user ?? null)

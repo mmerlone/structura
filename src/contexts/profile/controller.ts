@@ -1,6 +1,7 @@
 import { ErrorCodes } from '@/lib/error/codes'
 import { BusinessError } from '@/lib/error/errors'
 import { handleClientError as handleError } from '@/lib/error'
+import { logger } from '@/lib/logger/client'
 import type { DatabaseErrorContext, ValidationErrorContext } from '@/types/error.types'
 import { ProfileClientService } from '@/lib/supabase/services/database/profiles/profile.client'
 import type { Profile } from '@/types/database'
@@ -67,7 +68,7 @@ export async function loadProfile(userId?: string): Promise<Profile | null> {
     return profile ?? null
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      console.debug('Profile loading aborted for user:', userId)
+      logger.debug({ userId }, 'Profile loading aborted for user')
       return null
     }
 
@@ -88,7 +89,7 @@ export async function updateProfile(userId: string, updates: Partial<Profile>): 
     return updated
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      console.debug('Profile update aborted for user:', userId)
+      logger.debug({ userId }, 'Profile update aborted for user')
       throw err
     }
 
@@ -109,7 +110,7 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
     return url
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      console.debug('Avatar upload aborted for user:', userId)
+      logger.debug({ userId }, 'Avatar upload aborted for user')
       throw err
     }
 

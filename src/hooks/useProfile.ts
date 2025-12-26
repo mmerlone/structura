@@ -1,15 +1,15 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 
+import { QUERY_CONFIG, QUERY_KEYS } from '@/config/query'
 import { ErrorCodes } from '@/lib/error/codes'
 import { BusinessError } from '@/lib/error/errors'
+import { logger } from '@/lib/logger/client'
 import { ProfileClientService } from '@/lib/supabase/services/database/profiles/profile.client'
 import type { Profile } from '@/types/database'
 import { ThemePreference } from '@/types/theme.types'
-
-const PROFILE_QUERY_KEY = 'profile'
 
 /**
  * User profile management hook with React Query integration.
@@ -79,6 +79,17 @@ const PROFILE_QUERY_KEY = 'profile'
  */
 export function useProfile(userId?: string, initialData?: Profile | null) {
   const queryClient = useQueryClient()
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Abort any pending requests when component unmounts
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [])
 
   const {
     data: profile,
@@ -86,7 +97,7 @@ export function useProfile(userId?: string, initialData?: Profile | null) {
     error,
     refetch,
   } = useQuery<Profile | null>({
-    queryKey: [PROFILE_QUERY_KEY, userId],
+    queryKey: QUERY_KEYS.profile(userId),
     initialData: initialData || undefined,
     queryFn: async () => {
       if (userId === null || userId === undefined) return null
@@ -100,18 +111,20 @@ export function useProfile(userId?: string, initialData?: Profile | null) {
           ...(error instanceof Error ? { stack: error.stack } : {}),
         }
 
-        console.error('Profile fetch error:', {
-          error,
-          context: errorContext,
-          message: 'Failed to load profile',
-        })
+        logger.error(
+          {
+            error,
+            ...errorContext,
+          },
+          'Failed to load profile'
+        )
 
         throw error
       }
     },
     enabled: userId !== null && userId !== undefined,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: QUERY_CONFIG.profile.staleTime,
+    gcTime: QUERY_CONFIG.profile.gcTime,
     refetchOnWindowFocus: false, // Prevent refetch on window focus to avoid unnecessary reloads
     refetchOnMount: false, // Only refetch if data is stale
     retry: (failureCount, error) => {
@@ -119,11 +132,11 @@ export function useProfile(userId?: string, initialData?: Profile | null) {
         error instanceof BusinessError &&
         error.statusCode !== null &&
         error.statusCode !== undefined &&
-        [403, 404].includes(error.statusCode)
+        QUERY_CONFIG.retry.nonRetryableStatusCodes.includes(error.statusCode)
       ) {
         return false
       }
-      return failureCount < 3
+      return failureCount < QUERY_CONFIG.retry.maxAttempts
     },
   })
 
@@ -135,7 +148,7 @@ export function useProfile(userId?: string, initialData?: Profile | null) {
     Partial<Profile>,
     MutationContext
   >({
-    mutationKey: [PROFILE_QUERY_KEY, userId],
+    mutationKey: [...QUERY_KEYS.profile(userId), 'update'],
     mutationFn: async (updates: Partial<Profile>) => {
       if (userId === null || userId === undefined) {
         throw new BusinessError({
@@ -151,12 +164,12 @@ export function useProfile(userId?: string, initialData?: Profile | null) {
     onMutate: async (updates) => {
       if (userId === null || userId === undefined) return
 
-      await queryClient.cancelQueries({ queryKey: [PROFILE_QUERY_KEY, userId] })
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.profile(userId) })
 
-      const previousProfile = queryClient.getQueryData<Profile | null>([PROFILE_QUERY_KEY, userId])
+      const previousProfile = queryClient.getQueryData<Profile | null>(QUERY_KEYS.profile(userId))
 
       if (previousProfile) {
-        queryClient.setQueryData([PROFILE_QUERY_KEY, userId], {
+        queryClient.setQueryData(QUERY_KEYS.profile(userId), {
           ...previousProfile,
           ...updates,
         })
@@ -177,28 +190,30 @@ export function useProfile(userId?: string, initialData?: Profile | null) {
           : {}),
       }
 
-      console.error('Profile update error:', {
-        error,
-        context: errorContext,
-        message: 'Profile update failed',
-      })
+      logger.error(
+        {
+          error,
+          ...errorContext,
+        },
+        'Profile update failed'
+      )
 
       if (context?.previousProfile) {
-        queryClient.setQueryData([PROFILE_QUERY_KEY, userId], context.previousProfile)
+        queryClient.setQueryData(QUERY_KEYS.profile(userId), context.previousProfile)
       }
     },
     onSettled: () => {
       // Invalidate queries to trigger refetch, but use refetchType: 'active' to only refetch active queries
       // This prevents unnecessary refetches that could cause component remounts
       queryClient.invalidateQueries({
-        queryKey: [PROFILE_QUERY_KEY, userId],
+        queryKey: QUERY_KEYS.profile(userId),
         refetchType: 'active', // Only refetch if the query is currently being used
       })
     },
   })
 
   const { mutateAsync: uploadAvatar, isPending: isUploadingAvatar } = useMutation<string, Error, File, undefined>({
-    mutationKey: [PROFILE_QUERY_KEY, userId, 'avatar'],
+    mutationKey: [...QUERY_KEYS.profile(userId), 'avatar'],
     mutationFn: async (file: File) => {
       if (userId === null || userId === undefined) {
         throw new BusinessError({
@@ -208,30 +223,40 @@ export function useProfile(userId?: string, initialData?: Profile | null) {
           context: { operation: 'uploadAvatar' },
         })
       }
-      const service = new ProfileClientService()
-      return await service.uploadAvatar(userId, file)
+
+      // Create new AbortController for this operation
+      abortControllerRef.current = new AbortController()
+
+      try {
+        const service = new ProfileClientService()
+        const result = await service.uploadAvatar(userId, file)
+        return result
+      } finally {
+        // Clear the abort controller after operation completes
+        abortControllerRef.current = null
+      }
     },
     onSuccess: (avatarUrl) => {
-      queryClient.setQueryData([PROFILE_QUERY_KEY, userId], (old: Profile | null) => {
+      queryClient.setQueryData(QUERY_KEYS.profile(userId), (old: Profile | null) => {
         if (!old) return old
         // Use Object.assign for single property update (more efficient than spread)
         return Object.assign({}, old, { avatar_url: avatarUrl })
       })
     },
     onError: (error) => {
-      console.error('Avatar upload error:', {
-        error,
-        context: {
+      logger.error(
+        {
+          error,
           userId,
           operation: 'uploadAvatar',
         },
-        message: 'Avatar upload failed',
-      })
+        'Avatar upload failed'
+      )
     },
     onSettled: () => {
       // Invalidate queries to trigger refetch, but use refetchType: 'active' to only refetch active queries
       queryClient.invalidateQueries({
-        queryKey: [PROFILE_QUERY_KEY, userId],
+        queryKey: QUERY_KEYS.profile(userId),
         refetchType: 'active',
       })
     },
@@ -251,7 +276,7 @@ export function useProfile(userId?: string, initialData?: Profile | null) {
       try {
         await updateProfile({ theme })
       } catch (error) {
-        console.error('Failed to update theme preference:', { error, userId, theme })
+        logger.error({ error, userId, theme }, 'Failed to update theme preference')
         throw error
       }
     },

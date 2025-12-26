@@ -24,6 +24,7 @@ import { useState } from 'react'
 
 import { useAuthContext } from '@/components/providers'
 import { useProfile } from '@/hooks/useProfile'
+import { logger } from '@/lib/logger/client'
 import { SignOutReasonEnum } from '@/types'
 
 /**
@@ -53,13 +54,13 @@ export function UserMenu(): JSX.Element {
     try {
       const { error } = await signOut(SignOutReasonEnum.USER_ACTION)
       if (error) {
-        console.error('Error signing out:', error)
+        logger.error({ error }, 'Error signing out')
         return
       }
       router.push('/')
       router.refresh()
     } catch (error) {
-      console.error('Unexpected error during sign out:', error)
+      logger.error({ error }, 'Unexpected error during sign out')
     } finally {
       handleClose()
     }

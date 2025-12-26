@@ -5,6 +5,7 @@ import { Controller, useFormContext } from 'react-hook-form'
 import { FormSection } from '@/components/forms'
 import { LocationSelector } from '@/components/forms/LocationSelector'
 import { useSnackbar } from '@/contexts/SnackbarContext'
+import { logger } from '@/lib/logger/client'
 import { getTimezones } from '@/lib/utils/timezone'
 import { ProfileFormValues } from '@/lib/validators'
 import { Timezone } from '@/types/timezone.types'
@@ -34,10 +35,10 @@ export function LocationInfo({ disabled = false }: LocationInfoProps): JSX.Eleme
           const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone
           setUserDetectedTz(detectedTz)
         } catch {
-          console.warn("Could not detect user's timezone")
+          logger.warn({}, "Could not detect user's timezone")
         }
       } catch (error) {
-        console.error('Failed to load timezones:', error)
+        logger.error({ error }, 'Failed to load timezones')
         showError('Failed to load timezone data. Using default timezones.')
       } finally {
         setIsLoading(false)

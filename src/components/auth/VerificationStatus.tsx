@@ -4,6 +4,7 @@ import { Alert, Button, CircularProgress, Snackbar } from '@mui/material'
 import { useCallback, useEffect, useState } from 'react'
 
 import { SITE_CONFIG } from '@/config/site'
+import { logger } from '@/lib/logger/client'
 import { createClient } from '@/lib/supabase/client'
 
 type VerificationStatusProps = {
@@ -39,10 +40,10 @@ export function VerificationStatus({ userId, email }: VerificationStatusProps): 
         setStatus('unverified')
       }
     } catch (error) {
-      console.error('Error checking verification status:', error)
+      logger.error({ error, userId }, 'Error checking verification status')
       setStatus('unverified')
     }
-  }, [])
+  }, [userId])
 
   const handleResendVerification = useCallback(async (): Promise<void> => {
     setIsLoading(true)
@@ -57,7 +58,7 @@ export function VerificationStatus({ userId, email }: VerificationStatusProps): 
       })
 
       if (error) {
-        console.error('Failed to resend verification email:', error)
+        logger.error({ error, email }, 'Failed to resend verification email')
         throw error
       }
 
@@ -67,7 +68,7 @@ export function VerificationStatus({ userId, email }: VerificationStatusProps): 
         severity: 'success',
       })
     } catch (error) {
-      console.error('Error resending verification email:', error)
+      logger.error({ error, email }, 'Error resending verification email')
       setSnackbar({
         open: true,
         message: 'Failed to send verification email. Please try again.',

@@ -5,6 +5,7 @@ import { Alert, Box, Button, Container, Paper, Typography } from '@mui/material'
 import type React from 'react'
 import { Component, type ReactNode } from 'react'
 
+import { logger } from '@/lib/logger/client'
 import type { AppError } from '@/types/error.types'
 
 interface Props {
@@ -48,7 +49,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       })
     }
 
-    console.error('Global Error Boundary caught an error:', errorContext)
+    logger.error(errorContext, 'Global Error Boundary caught an error')
     this.setState({ error, errorInfo })
 
     // Capture error to Sentry for issue tracking

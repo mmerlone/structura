@@ -5,6 +5,7 @@ import { Button, CircularProgress, Stack } from '@mui/material'
 import { useState } from 'react'
 
 import { useAuthContext } from '@/components/providers'
+import { logger } from '@/lib/logger/client'
 import { AuthProvidersEnum } from '@/types/enums'
 
 interface LoginButtonsProps {
@@ -26,10 +27,10 @@ export function LoginButtons({ disabled = false }: LoginButtonsProps): JSX.Eleme
 
       const { error } = await signInWithProvider(provider)
       if (error) {
-        console.error('Login failed:', error)
+        logger.error({ error, provider }, 'Login failed')
       }
     } catch (error) {
-      console.error('Login failed:', error)
+      logger.error({ error, provider }, 'Login failed')
     } finally {
       setLoadingStates((prev) => ({ ...prev, [provider]: false }))
     }

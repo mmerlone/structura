@@ -4,6 +4,8 @@ import { useCallback, useRef, useState } from 'react'
 
 import { useAuthContext } from '@/components/providers'
 import { useProfile } from '@/hooks/useProfile'
+import { useOptimizedAvatar } from '@/hooks/useOptimizedAvatar'
+import { logger } from '@/lib/logger/client'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const VALID_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
@@ -11,6 +13,7 @@ const VALID_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 export function AvatarSection(): JSX.Element {
   const { authUser } = useAuthContext()
   const { profile, uploadAvatar, updateProfile } = useProfile(authUser?.id)
+  const avatarUrls = useOptimizedAvatar(profile?.avatar_url ?? null)
   const [isUploading, setIsUploading] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -24,26 +27,26 @@ export function AvatarSection(): JSX.Element {
       if (!file) return
 
       if (!VALID_FILE_TYPES.includes(file.type)) {
-        console.warn('Invalid file type for avatar upload:', file.type)
+        logger.warn({ fileType: file.type }, 'Invalid file type for avatar upload')
         return
       }
 
       if (file.size > MAX_FILE_SIZE) {
-        console.warn('File size too large for avatar upload:', file.size)
+        logger.warn({ fileSize: file.size }, 'File size too large for avatar upload')
         return
       }
 
       try {
         setIsUploading(true)
-        console.log('Starting avatar upload:', { fileName: file.name, fileSize: file.size })
+        logger.info({ fileName: file.name, fileSize: file.size }, 'Starting avatar upload')
 
+        // uploadAvatar already updates the profile with the optimized URL
         const uploadedUrl = await uploadAvatar(file)
         if (uploadedUrl) {
-          await updateProfile({ avatar_url: uploadedUrl })
-          console.log('Avatar upload completed successfully:', { uploadedUrl })
+          logger.info({ uploadedUrl }, 'Avatar upload completed successfully')
         }
       } catch (error) {
-        console.error('Failed to update avatar:', error)
+        logger.error({ error }, 'Failed to update avatar')
       } finally {
         setIsUploading(false)
         // Reset the file input
@@ -52,7 +55,7 @@ export function AvatarSection(): JSX.Element {
         }
       }
     },
-    [uploadAvatar, updateProfile]
+    [uploadAvatar]
   )
 
   const handleRemoveAvatar = useCallback(
@@ -62,11 +65,11 @@ export function AvatarSection(): JSX.Element {
 
       try {
         setIsUploading(true)
-        console.log('Starting avatar removal')
+        logger.info({}, 'Starting avatar removal')
         await updateProfile({ avatar_url: null })
-        console.log('Avatar removal completed successfully')
+        logger.info({}, 'Avatar removal completed successfully')
       } catch (error) {
-        console.error('Failed to remove avatar:', error)
+        logger.error({ error }, 'Failed to remove avatar')
       } finally {
         setIsUploading(false)
       }
@@ -97,7 +100,7 @@ export function AvatarSection(): JSX.Element {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}>
         <Avatar
-          src={profile?.avatar_url ?? ''}
+          src={avatarUrls.large}
           alt={profile?.display_name ?? 'User'}
           sx={{
             width: '100%',
@@ -105,6 +108,11 @@ export function AvatarSection(): JSX.Element {
             fontSize: '4rem',
             transition: 'opacity 0.3s ease',
             opacity: isHovered ? 0.8 : 1,
+          }}
+          imgProps={{
+            loading: 'lazy',
+            // Provide srcSet for responsive images
+            srcSet: `${avatarUrls.medium} 1x, ${avatarUrls.large} 2x`,
           }}
         />
 

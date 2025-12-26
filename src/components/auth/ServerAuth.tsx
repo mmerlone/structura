@@ -6,6 +6,7 @@ import type { AuthUser } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 
 import { useAuthContext } from '@/components/providers'
+import { logger } from '@/lib/logger/client'
 
 interface ServerAuthProps {
   /**
@@ -92,7 +93,7 @@ export function ServerAuth({
       const hasAccess = await checkAccess(isAuthenticated, authUser, session)
       return hasAccess
     } catch (error) {
-      console.error('Error in access control check:', error)
+      logger.error({ error }, 'Error in access control check')
       return false
     }
   }, [isAuthenticated, isLoading, authUser, session, checkAccess, required])
