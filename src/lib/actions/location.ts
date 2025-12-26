@@ -21,15 +21,15 @@ const CACHE_EVICTION_RATIO = 0.1 // Remove 10% of oldest entries when cache is f
  */
 function getCachedCountry(cacheKey: string): string | null {
   const cached = geoLocationCache.get(cacheKey)
-  
+
   if (!cached) return null
-  
+
   // Check if cache entry is expired
   if (Date.now() - cached.timestamp > CACHE_TTL) {
     geoLocationCache.delete(cacheKey)
     return null
   }
-  
+
   return cached.country
 }
 
@@ -40,15 +40,16 @@ function cacheCountry(cacheKey: string, country: string): void {
   // Improved LRU: if cache is full, remove oldest entries based on CACHE_EVICTION_RATIO
   if (geoLocationCache.size >= MAX_CACHE_SIZE) {
     const entriesToRemove = Math.max(1, Math.floor(MAX_CACHE_SIZE * CACHE_EVICTION_RATIO))
-    const sortedEntries = Array.from(geoLocationCache.entries()).sort(
-      ([, a], [, b]) => a.timestamp - b.timestamp
-    )
-    
+    const sortedEntries = Array.from(geoLocationCache.entries()).sort(([, a], [, b]) => a.timestamp - b.timestamp)
+
     for (let i = 0; i < entriesToRemove && i < sortedEntries.length; i++) {
-      geoLocationCache.delete(sortedEntries[i][0])
+      const entry = sortedEntries[i]
+      if (entry) {
+        geoLocationCache.delete(entry[0])
+      }
     }
   }
-  
+
   geoLocationCache.set(cacheKey, {
     country,
     timestamp: Date.now(),
@@ -58,7 +59,7 @@ function cacheCountry(cacheKey: string, country: string): void {
 /**
  * Server Action to detect the user's country using IP geolocation.
  * Replaces the legacy /api/location/country API route.
- * 
+ *
  * Implements caching to prevent API quota exhaustion:
  * - Results cached for 24 hours per IP
  * - Maximum 1000 cached entries (LRU eviction)
@@ -67,7 +68,7 @@ export async function detectCountry(ipAddress?: string): Promise<string | null> 
   try {
     // Generate cache key (use provided IP or 'auto-detect' for auto-detection)
     const cacheKey = ipAddress || 'auto-detect'
-    
+
     // Check cache first
     const cachedCountry = getCachedCountry(cacheKey)
     if (cachedCountry) {
