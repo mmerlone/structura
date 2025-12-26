@@ -1,3 +1,5 @@
+import { NON_RETRYABLE_STATUS_CODES } from '@/types/http.types'
+
 /**
  * React Query Configuration
  *
@@ -50,7 +52,7 @@ export const QUERY_CONFIG = {
      * 403: Forbidden - needs authorization
      * 404: Not Found - resource doesn't exist
      */
-    nonRetryableStatusCodes: [400, 401, 403, 404],
+    nonRetryableStatusCodes: NON_RETRYABLE_STATUS_CODES,
   },
 
   /**

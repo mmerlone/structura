@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger/client'
 import { ProfileClientService } from '@/lib/supabase/services/database/profiles/profile.client'
 import type { Profile } from '@/types/database'
 import { ThemePreference } from '@/types/theme.types'
+import { isNonRetryableStatus } from '@/types/http.types'
 
 /**
  * User profile management hook with React Query integration.
@@ -128,12 +129,7 @@ export function useProfile(userId?: string, initialData?: Profile | null) {
     refetchOnWindowFocus: false, // Prevent refetch on window focus to avoid unnecessary reloads
     refetchOnMount: false, // Only refetch if data is stale
     retry: (failureCount, error) => {
-      if (
-        error instanceof BusinessError &&
-        error.statusCode !== null &&
-        error.statusCode !== undefined &&
-        QUERY_CONFIG.retry.nonRetryableStatusCodes.includes(error.statusCode)
-      ) {
+      if (error instanceof BusinessError && isNonRetryableStatus(error.statusCode)) {
         return false
       }
       return failureCount < QUERY_CONFIG.retry.maxAttempts

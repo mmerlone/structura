@@ -1,6 +1,6 @@
 import { BaseService } from '../../base.service'
 import { convertAppProfileForInsert, convertAppProfileForUpdate, convertDbProfile } from '@/lib/utils/profile-utils'
-import { validateAndSanitizeFile } from '@/lib/security/sanitize'
+import { validateAndSanitizeFile } from '@/lib/security/sanitize.client'
 import { getOptimizedImageUrl, parseSupabaseStorageUrl, AVATAR_SIZES } from '@/lib/utils/image-utils'
 import type { Profile, ProfileUpdate } from '@/types/profile.types'
 
@@ -9,9 +9,9 @@ const PROFILE_BUCKET = 'avatars'
 // Avatar validation constraints
 const AVATAR_VALIDATION = {
   maxSize: 5 * 1024 * 1024, // 5MB
-  allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'],
-  allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp', '.gif'],
-} as const
+  allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'] as string[],
+  allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp', '.gif'] as string[],
+}
 
 /**
  * Abstract base profile service with shared business logic
@@ -98,20 +98,18 @@ export abstract class ProfileService extends BaseService {
 
       // Server-side validation
       const validation = validateAndSanitizeFile(file, AVATAR_VALIDATION)
-      
+
       if (!validation.isValid) {
-        this.logger.warn(
-          { userId, fileName: file.name, error: validation.error },
-          'Avatar validation failed'
-        )
+        this.logger.warn({ userId, fileName: file.name, error: validation.error }, 'Avatar validation failed')
         throw new Error(validation.error || 'Invalid file')
       }
 
       const fileExt = file.name.split('.').pop()
       // Use crypto.randomUUID() to prevent filename collisions
-      const uniqueId = typeof crypto !== 'undefined' && crypto.randomUUID 
-        ? crypto.randomUUID() 
-        : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+      const uniqueId =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
       const fileName = validation.sanitizedName || `${userId}-${uniqueId}.${fileExt}`
       const filePath = `${userId}/${fileName}`
 
@@ -148,10 +146,10 @@ export abstract class ProfileService extends BaseService {
   /**
    * Get optimized avatar URLs for different sizes
    * Useful for responsive images or different UI contexts
-   * 
+   *
    * @param avatarUrl - The stored avatar URL (can be optimized or base URL)
    * @returns Object with URLs for different sizes, or null if no avatar
-   * 
+   *
    * @example
    * ```typescript
    * const urls = await service.getOptimizedAvatarUrls(profile.avatar_url)
@@ -169,7 +167,7 @@ export abstract class ProfileService extends BaseService {
 
     // Use shared utility to parse the URL
     const pathInfo = parseSupabaseStorageUrl(avatarUrl)
-    
+
     if (!pathInfo) {
       // URL doesn't match expected pattern, return as-is for all sizes
       return {

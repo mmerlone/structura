@@ -123,8 +123,8 @@ function LabelledToggleInner<T extends string | number>(
           <Box
             aria-hidden
             className={cn(
-              ' inset-shadow-gray-50/50 inset-shadow-sm shadow-sm shadow-gray-900',
-              'absolute top-0 bottom-0 left-0 rounded-full shadow-md',
+              'cartoon',
+              'absolute top-0 bottom-0 left-0 rounded-full',
               !reduceMotion && 'transition-transform duration-200 ease-out'
             )}
             style={indicatorStyle}
@@ -153,11 +153,13 @@ function LabelledToggleInner<T extends string | number>(
                       width: 0,
                       height: 0,
                     }}
-                    inputProps={{ 'aria-label': opt.ariaLabel }}
+                    slotProps={{
+                      input: { 'aria-label': opt.ariaLabel },
+                    }}
                   />
                 }
                 label={
-                  <Box component="span" className={cn('relative z-10 m-2')}>
+                  <Box component="span" className={cn('relative z-10 m-2 text-lg font-semibold')}>
                     {opt.label}
                   </Box>
                 }

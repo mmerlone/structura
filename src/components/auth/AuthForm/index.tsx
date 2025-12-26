@@ -308,7 +308,6 @@ export default function AuthForm({ initialOperation = AuthOperationsEnum.LOGIN }
   if (emailSent) {
     return (
       <Paper
-        elevation={3}
         sx={{
           maxWidth: 600,
           mx: 'auto',
@@ -341,7 +340,6 @@ export default function AuthForm({ initialOperation = AuthOperationsEnum.LOGIN }
 
   return (
     <Paper
-      elevation={3}
       sx={{
         width: '100%',
         mx: 'auto',
@@ -350,9 +348,9 @@ export default function AuthForm({ initialOperation = AuthOperationsEnum.LOGIN }
         borderRadius: 2,
         boxShadow: theme.shadows[4],
       }}>
-      <Typography variant="h5" component="h1" align="center" gutterBottom color="text.primary" sx={{ fontWeight: 600 }}>
+      {/* <Typography variant="h5" component="h1" align="center" gutterBottom color="text.primary" sx={{ fontWeight: 600 }}>
         {uiText.titles[operation]}
-      </Typography>
+      </Typography> */}
       {error && (
         <Alert
           severity="error"

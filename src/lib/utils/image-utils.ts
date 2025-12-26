@@ -1,6 +1,6 @@
 /**
  * Image Optimization Utilities for Supabase Storage
- * 
+ *
  * Provides utilities for generating optimized image URLs with Supabase's
  * built-in image transformation API.
  */
@@ -15,7 +15,7 @@ export interface ImageTransformOptions {
   width?: number
   height?: number
   resize?: 'cover' | 'contain' | 'fill'
-  format?: 'webp' | 'jpg' | 'png' | 'avif'
+  format?: 'origin' // Only 'origin' is supported by Supabase to disable auto-optimization
   quality?: number
 }
 
@@ -27,41 +27,37 @@ export const AVATAR_SIZES = {
     width: 50,
     height: 50,
     resize: 'cover' as const,
-    format: 'webp' as const,
     quality: 80,
   },
   small: {
     width: 100,
     height: 100,
     resize: 'cover' as const,
-    format: 'webp' as const,
     quality: 80,
   },
   medium: {
     width: 200,
     height: 200,
     resize: 'cover' as const,
-    format: 'webp' as const,
     quality: 80,
   },
   large: {
     width: 400,
     height: 400,
     resize: 'cover' as const,
-    format: 'webp' as const,
-    quality: 85,
+    quality: 80,
   },
 } as const
 
 /**
  * Generate an optimized image URL using Supabase's image transformation
- * 
+ *
  * @param client - Supabase client instance
  * @param bucket - Storage bucket name
  * @param filePath - Path to the file in storage
  * @param options - Transformation options
  * @returns Optimized image URL
- * 
+ *
  * @example
  * ```typescript
  * const url = getOptimizedImageUrl(
@@ -86,7 +82,8 @@ export function getOptimizedImageUrl(
           width: options.width,
           height: options.height,
           resize: options.resize,
-          format: options.format,
+          // Only include format if it's 'origin' (to disable auto-optimization)
+          ...(options.format === 'origin' && { format: 'origin' }),
           quality: options.quality,
         }
       : undefined,
@@ -97,12 +94,12 @@ export function getOptimizedImageUrl(
 
 /**
  * Generate multiple optimized image URLs for responsive images
- * 
+ *
  * @param client - Supabase client instance
  * @param bucket - Storage bucket name
  * @param filePath - Path to the file in storage
  * @returns Object with URLs for different sizes
- * 
+ *
  * @example
  * ```typescript
  * const urls = getResponsiveImageUrls(supabaseClient, 'avatars', 'user-123/avatar.jpg')
@@ -128,17 +125,13 @@ export function getResponsiveImageUrls(
 /**
  * Get the base (unoptimized) URL for an image
  * Useful for fallback or original image access
- * 
+ *
  * @param client - Supabase client instance
  * @param bucket - Storage bucket name
  * @param filePath - Path to the file in storage
  * @returns Base public URL
  */
-export function getBaseImageUrl(
-  client: SupabaseClient<Database>,
-  bucket: string,
-  filePath: string
-): string {
+export function getBaseImageUrl(client: SupabaseClient<Database>, bucket: string, filePath: string): string {
   const {
     data: { publicUrl },
   } = client.storage.from(bucket).getPublicUrl(filePath)
@@ -148,10 +141,10 @@ export function getBaseImageUrl(
 
 /**
  * Helper to determine optimal avatar size based on container dimensions
- * 
+ *
  * @param containerSize - The size of the container in pixels
  * @returns The appropriate avatar size configuration
- * 
+ *
  * @example
  * ```typescript
  * const size = getOptimalAvatarSize(150)
@@ -167,13 +160,13 @@ export function getOptimalAvatarSize(containerSize: number): ImageTransformOptio
 
 /**
  * Extract bucket and file path from Supabase Storage public URL
- * 
+ *
  * Supabase Storage URLs follow the pattern:
  * https://{project}.supabase.co/storage/v1/object/public/{bucket}/{path}
- * 
+ *
  * @param url - Supabase Storage public URL
  * @returns Object with bucket and filePath, or null if URL doesn't match pattern
- * 
+ *
  * @example
  * ```typescript
  * const info = parseSupabaseStorageUrl('https://proj.supabase.co/storage/v1/object/public/avatars/user-123/avatar.jpg')
@@ -188,6 +181,8 @@ export function parseSupabaseStorageUrl(url: string | null): { bucket: string; f
   if (urlParts.length !== 2) return null
 
   const [, bucketAndPath] = urlParts
+  if (!bucketAndPath) return null
+
   const pathParts = bucketAndPath.split('/')
   const bucket = pathParts[0]
   const filePath = pathParts.slice(1).join('/')

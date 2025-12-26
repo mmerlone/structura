@@ -1,6 +1,6 @@
 /**
  * Hook for accessing optimized avatar URLs
- * 
+ *
  * Provides easy access to different sizes of avatar images using
  * Supabase's image transformation API.
  */
@@ -14,21 +14,19 @@ import {
   type ImageTransformOptions,
 } from '@/lib/utils/image-utils'
 
-const PROFILE_BUCKET = 'avatars'
-
 /**
  * Hook to get optimized avatar URLs for different sizes
- * 
+ *
  * @param avatarUrl - The stored avatar URL from the profile
  * @returns Object with optimized URLs for different sizes
- * 
+ *
  * @example
  * ```typescript
  * function UserAvatar({ profile }) {
  *   const avatarUrls = useOptimizedAvatar(profile.avatar_url)
- *   
+ *
  *   return (
- *     <img 
+ *     <img
  *       src={avatarUrls.medium}
  *       srcSet={`${avatarUrls.small} 1x, ${avatarUrls.medium} 2x`}
  *       alt="User avatar"
@@ -69,11 +67,11 @@ export function useOptimizedAvatar(avatarUrl: string | null) {
 
 /**
  * Hook to get a single optimized avatar URL with custom options
- * 
+ *
  * @param avatarUrl - The stored avatar URL from the profile
  * @param options - Custom transformation options
  * @returns Optimized image URL
- * 
+ *
  * @example
  * ```typescript
  * function LargeAvatar({ profile }) {
@@ -82,15 +80,12 @@ export function useOptimizedAvatar(avatarUrl: string | null) {
  *     height: 500,
  *     quality: 90,
  *   })
- *   
+ *
  *   return <img src={avatarUrl} alt="User avatar" />
  * }
  * ```
  */
-export function useOptimizedAvatarUrl(
-  avatarUrl: string | null,
-  options: ImageTransformOptions = AVATAR_SIZES.medium
-) {
+export function useOptimizedAvatarUrl(avatarUrl: string | null, options: ImageTransformOptions = AVATAR_SIZES.medium) {
   // Memoize the client to prevent recreation on every render
   const client = useMemo(() => createClient(), [])
 

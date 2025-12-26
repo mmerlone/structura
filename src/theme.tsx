@@ -14,7 +14,7 @@ export const simpleTheme = responsiveFontSizes(
           mode: 'light',
           background: {
             default: '#e9e7e7ff',
-            paper: '#fefdfdff',
+            paper: '#f5f6f6ff',
           },
         },
       },
@@ -35,16 +35,6 @@ export const simpleTheme = responsiveFontSizes(
       MuiPaper: {
         defaultProps: {
           elevation: 1,
-        },
-        styleOverrides: {
-          elevation1: {
-            '.light &': {
-              boxShadow: '-5px -5px 10px rgba(255, 255, 255, 0.75), 5px 5px 10px rgba(0, 0, 0, 0.25)',
-            },
-            '.dark &': {
-              boxShadow: '-5px -5px 10px rgba(255, 255, 255, 0.2), 5px 5px 10px rgba(0, 0, 0, 0.50)',
-            },
-          },
         },
       },
       MuiAppBar: {

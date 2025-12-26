@@ -1,77 +1,17 @@
 /**
- * Input Sanitization Utilities
+ * Client-side Input Sanitization Utilities
  *
- * Comprehensive input sanitization to prevent XSS, injection attacks,
- * and other security vulnerabilities. Uses configuration from
- * src/config/security.ts for validation rules.
+ * Client-safe sanitization functions that don't require Node.js dependencies.
+ * This file can be safely imported in both client and server code.
  */
 
-import { JSDOM } from 'jsdom'
-import createDOMPurify from 'dompurify'
 import { SECURITY_CONFIG } from '@/config/security'
-import { buildLogger } from '@/lib/logger/server'
 import type {
-  HtmlSanitizeOptions,
   InputSanitizeOptions,
   FileValidationOptions,
   FileValidationResult,
   FileMetadata,
-  SanitizationReport,
 } from '@/types/security.types'
-
-const logger = buildLogger('security-sanitize')
-
-/**
- * Sanitize HTML content to prevent XSS attacks
- */
-export function sanitizeHtml(input: string, options: HtmlSanitizeOptions = {}): string {
-  try {
-    const {
-      allowedTags = ['b', 'i', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li'],
-      allowedAttributes = ['href', 'title'],
-      stripTags = false,
-      allowLinks = false,
-    } = options
-
-    if (stripTags) {
-      // Strip all HTML tags
-      return input.replace(/<[^>]*>/g, '')
-    }
-
-    // Create DOMPurify instance for server-side use
-    const window = new JSDOM('').window
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const DOMPurify = createDOMPurify(window as any)
-
-    const config = {
-      ALLOWED_TAGS: allowLinks ? [...allowedTags, 'a'] : allowedTags,
-      ALLOWED_ATTR: allowedAttributes,
-      ALLOW_DATA_ATTR: false,
-      ALLOW_UNKNOWN_PROTOCOLS: false,
-      RETURN_DOM: false,
-      RETURN_DOM_FRAGMENT: false,
-      RETURN_TRUSTED_TYPE: false,
-    }
-
-    const sanitized = DOMPurify.sanitize(input, config) || ''
-
-    logger.debug(
-      {
-        inputLength: input.length,
-        outputLength: sanitized.length,
-        allowedTags: allowedTags.length,
-        stripped: input.length !== sanitized.length,
-      },
-      'HTML sanitized'
-    )
-
-    return sanitized
-  } catch (error) {
-    logger.error({ error, inputLength: input.length }, 'Error sanitizing HTML')
-    // Return empty string on error for security
-    return ''
-  }
-}
 
 /**
  * Escape HTML entities to prevent XSS
@@ -115,29 +55,19 @@ export function sanitizeInput(input: string, options: InputSanitizeOptions = {})
       sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     }
 
-    // Handle HTML content
-    if (allowHtml) {
-      sanitized = sanitizeHtml(sanitized)
-    } else {
+    // Handle HTML content - escape since we can't use DOMPurify on client
+    if (!allowHtml) {
       sanitized = escapeHtml(sanitized)
     }
 
     // Enforce length limit
     if (sanitized.length > maxLength) {
       sanitized = sanitized.substring(0, maxLength)
-      logger.warn(
-        {
-          originalLength: input.length,
-          truncatedLength: sanitized.length,
-          maxLength,
-        },
-        'Input truncated due to length limit'
-      )
     }
 
     return sanitized
-  } catch (error) {
-    logger.error({ error, inputLength: input.length }, 'Error sanitizing input')
+  } catch {
+    // Return empty string on error for security
     return ''
   }
 }
@@ -177,8 +107,7 @@ export function sanitizeFilename(filename: string): string {
     }
 
     return sanitized
-  } catch (error) {
-    logger.error({ error, filename }, 'Error sanitizing filename')
+  } catch {
     return `file_${Date.now()}`
   }
 }
@@ -235,8 +164,7 @@ function performFileSecurityChecks(file: File): FileValidationResult {
     }
 
     return { isValid: true }
-  } catch (error) {
-    logger.error({ error, fileName: file.name }, 'Error in security checks')
+  } catch {
     return {
       isValid: false,
       error: 'Security check failed',
@@ -297,17 +225,6 @@ export function validateAndSanitizeFile(file: File, options: FileValidationOptio
       return securityChecks
     }
 
-    logger.info(
-      {
-        originalName,
-        sanitizedName,
-        size,
-        type,
-        extension,
-      },
-      'File validated and sanitized'
-    )
-
     const metadata: FileMetadata = {
       originalName,
       size,
@@ -320,8 +237,7 @@ export function validateAndSanitizeFile(file: File, options: FileValidationOptio
       sanitizedName,
       metadata,
     }
-  } catch (error) {
-    logger.error({ error, fileName: file.name }, 'Error validating file')
+  } catch {
     return {
       isValid: false,
       error: 'File validation failed',
@@ -352,7 +268,6 @@ export function sanitizeUrl(url: string, allowedDomains: string[] = []): string 
 
     // Check protocol
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-      logger.warn({ url: cleanUrl, protocol: parsedUrl.protocol }, 'Invalid URL protocol')
       return null
     }
 
@@ -363,14 +278,12 @@ export function sanitizeUrl(url: string, allowedDomains: string[] = []): string 
       )
 
       if (!isAllowed) {
-        logger.warn({ url: cleanUrl, hostname: parsedUrl.hostname }, 'URL domain not allowed')
         return null
       }
     }
 
     return parsedUrl.toString()
-  } catch (error) {
-    logger.warn({ error, url }, 'Invalid URL format')
+  } catch {
     return null
   }
 }
@@ -405,44 +318,7 @@ export function sanitizeJson(jsonString: string): unknown {
     }
 
     return removeDangerousKeys(parsed)
-  } catch (error) {
-    logger.warn({ error, jsonLength: jsonString.length }, 'Invalid JSON input')
+  } catch {
     return null
-  }
-}
-
-/**
- * Create a sanitization report for debugging
- */
-export function createSanitizationReport(
-  input: string,
-  output: string,
-  type: 'html' | 'text' | 'filename' | 'url'
-): SanitizationReport {
-  const securityIssuesFound: string[] = []
-
-  // Check for common security issues in input
-  if (input.includes('<script')) {
-    securityIssuesFound.push('Script tag detected')
-  }
-  if (input.includes('javascript:')) {
-    securityIssuesFound.push('JavaScript protocol detected')
-  }
-  if (input.includes('data:')) {
-    securityIssuesFound.push('Data URL detected')
-  }
-  if (input.includes('../')) {
-    securityIssuesFound.push('Path traversal attempt detected')
-  }
-  if (input.includes('<?php')) {
-    securityIssuesFound.push('PHP code detected')
-  }
-
-  return {
-    inputLength: input.length,
-    outputLength: output.length,
-    changed: input !== output,
-    type,
-    securityIssuesFound,
   }
 }
